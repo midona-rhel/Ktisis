@@ -8,6 +8,7 @@ using Dalamud.Interface;
 
 using FFXIVClientStructs.Havok;
 
+using Ktisis.Events;
 using Ktisis.Helpers;
 using Ktisis.Overlay;
 using Ktisis.Structs;
@@ -35,6 +36,7 @@ namespace Ktisis.Interface.Components {
 		public Vector3 Rotation;
 		public Vector3 Scale;
 
+		private TransformTableState _state = TransformTableState.IDLE;
 		public void FetchConfigurations() {
 			BaseSpeedPos = Ktisis.Configuration.TransformTableBaseSpeedPos;
 			BaseSpeedRot = Ktisis.Configuration.TransformTableBaseSpeedRot;
@@ -42,6 +44,14 @@ namespace Ktisis.Interface.Components {
 			ModifierMultCtrl = Ktisis.Configuration.TransformTableModifierMultCtrl;
 			ModifierMultShift = Ktisis.Configuration.TransformTableModifierMultShift;
 			DigitPrecision = $"%.{Ktisis.Configuration.TransformTableDigitPrecision}f";
+		}
+
+		public TransformTable Clone() {
+			TransformTable tt = new();
+			tt.Position = Position;
+			tt.Rotation = Rotation;
+			tt.Scale = Scale;
+			return tt;
 		}
 
 
@@ -75,16 +85,19 @@ namespace Ktisis.Interface.Components {
 
 			// Position
 			result |= ColoredDragFloat3("##Position", ref Position, BaseSpeedPos * multiplier, axisColors);
+			UpdateTransformTableState();
 			ImGui.SameLine();
 			ControlButtons.ButtonChangeOperation(OPERATION.TRANSLATE, iconPosition);
 
 			// Rotation
 			result |= ColoredDragFloat3("##Rotation", ref Rotation, BaseSpeedRot * multiplier, axisColors);
+			UpdateTransformTableState();
 			ImGui.SameLine();
 			ControlButtons.ButtonChangeOperation(OPERATION.ROTATE, iconRotation);
 
 			// Scale
 			result |= ColoredDragFloat3("##Scale", ref Scale, BaseSpeedSca * multiplier, axisColors);
+			UpdateTransformTableState();
 			ImGui.SameLine();
 			ControlButtons.ButtonChangeOperation(OPERATION.SCALE, iconScale);
 
@@ -107,6 +120,19 @@ namespace Ktisis.Interface.Components {
 			GuiHelpers.IconTooltip(FontAwesomeIcon.Running, "Ctrl and Shift speed multipliers");
 
 			return result;
+		}
+
+		private unsafe void UpdateTransformTableState() {
+			if (
+				ImGui.IsItemClicked() &&
+				(ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) || ImGui.IsMouseDown(ImGuiMouseButton.Left))
+			) {
+				_state = TransformTableState.EDITING;
+			}
+
+			if (ImGui.IsItemDeactivatedAfterEdit()) _state = TransformTableState.IDLE;
+
+			EventManager.FireOnTransformationMatrixChangeEvent(_state);
 		}
 
 		private bool ColoredDragFloat3(string label, ref Vector3 value, float speed, IReadOnlyList<Vector4> colors, float borderSize = 1.0f) {

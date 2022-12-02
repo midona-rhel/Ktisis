@@ -11,6 +11,7 @@ using Ktisis.Interface.Windows.ActorEdit;
 using Ktisis.Interface.Windows.Workspace;
 using Ktisis.Structs.Actor.State;
 using Ktisis.Structs.Actor;
+using Ktisis.History;
 using Ktisis.Events;
 
 namespace Ktisis {
@@ -77,7 +78,9 @@ namespace Ktisis {
 			pluginInterface.UiBuilder.DisableGposeUiHide = true;
 			pluginInterface.UiBuilder.Draw += KtisisGui.Draw;
 
-			References.LoadReferences(Configuration);
+			// History
+
+			HistoryManager.Init();
 		}
 
 		public void Dispose() {
@@ -92,7 +95,6 @@ namespace Ktisis {
 			Interop.Hooks.PoseHooks.Dispose();
 
 			Interop.Alloc.Dispose();
-			Input.Instance.Dispose();
 			ActorStateWatcher.Instance.Dispose();
 			EventManager.OnGPoseChange -= Workspace.OnEnterGposeToggle;
 
@@ -101,6 +103,8 @@ namespace Ktisis {
 			if (EditEquip.Items != null)
 				EditEquip.Items = null;
 
+			Input.Dispose();
+			HistoryManager.Dispose();
 			foreach (var (_, texture) in References.Textures) {
 				texture.Dispose();
 			}
