@@ -1,49 +1,44 @@
-﻿using System;
+using System;
 
 using Dalamud.Logging;
 using Dalamud.Hooking;
 using Dalamud.Game.ClientState.Keys;
+using Dalamud.Logging;
 
 using Ktisis.Events;
 using Ktisis.Structs.Input;
+using Ktisis.Overlay;
 
 namespace Ktisis.Interop.Hooks {
 	internal static class ControlHooks {
 		public static KeyboardState KeyboardState = new();
 
-		internal unsafe delegate void InputDelegate(InputEvent* input, IntPtr a2, IntPtr a3, MouseState* mouseState, KeyboardState* keyState);
+		internal unsafe delegate void InputDelegate(InputEvent* keyState, IntPtr a2, IntPtr a3, MouseState* mouseState, IntPtr a5);
 		internal static Hook<InputDelegate> InputHook = null!;
 
-		internal unsafe static void InputDetour(InputEvent* input, IntPtr a2, IntPtr a3, MouseState* mouseState, KeyboardState* keyState) {
-			InputHook.Original(input, a2, a3, mouseState, keyState);
+		internal unsafe static void InputDetour(InputEvent* keyState, IntPtr a2, IntPtr a3, MouseState* mouseState, IntPtr a5) {
+			try {
+				if (mouseState != null) {
+					// TODO
+				}
 
-			if (!Ktisis.IsInGPose) return;
+				if (keyState != null) {
+					var keys = keyState->Keyboard->GetQueue();
+					for (var i = 0; i < keys->QueueCount; i++) {
+						var k = keys->Queue[i];
 
-			if (mouseState != null) {
-				// TODO
-			}
-
-			// Process queue
-
-			var keys = input->Keyboard->GetQueue();
-			KeyboardState = *keys;
-
-			for (var i = 0; i < keyState->QueueCount; i++) {
-				var k = keyState->Queue[i];
-
-				if (k->Event == KeyEvent.AnyKeyHeld) continue; // dont care didnt ask (use KeyEvent.Held)
-				if (k->Event == KeyEvent.Released) continue; // Allow InputHook2 to take care of release events.
-
-				if (EventManager.OnKeyPressed != null) {
-					var invokeList = EventManager.OnKeyPressed.GetInvocationList();
-					foreach (var invoke in invokeList) {
-						var res = (bool)invoke.Method.Invoke(invoke.Target, new object[] { *k })!;
-						if (res) {
-							keys->KeyMap[k->KeyCode] = 0;
-							keyState->KeyMap[k->KeyCode] = 0;
+						// TODO: Input event manager
+						if (k->Event == KeyEvent.Pressed && k->KeyCode == 27) {
+							if (OverlayWindow.GizmoOwner != null) {
+								OverlayWindow.DeselectGizmo();
+								k->Event = KeyEvent.None;
+								keyState->Keyboard->ClearQueue();
+							}
 						}
 					}
 				}
+			} catch (Exception e) {
+				PluginLog.Error(e, "Error in InputDetour.");
 			}
 		}
 
