@@ -11,7 +11,9 @@ using Ktisis.Interface.Windows.ActorEdit;
 using Ktisis.Interface.Windows.Workspace;
 using Ktisis.Structs.Actor.State;
 using Ktisis.Structs.Actor;
+using Ktisis.History;
 using Ktisis.Events;
+using Ktisis.Overlay;
 
 namespace Ktisis {
 	public sealed class Ktisis : IDalamudPlugin {
@@ -76,7 +78,8 @@ namespace Ktisis {
 			pluginInterface.UiBuilder.OpenConfigUi += ConfigGui.Toggle;
 			pluginInterface.UiBuilder.DisableGposeUiHide = true;
 			pluginInterface.UiBuilder.Draw += KtisisGui.Draw;
-
+      
+			HistoryManager.Init();
 			References.LoadReferences(Configuration);
 		}
 
@@ -85,6 +88,8 @@ namespace Ktisis {
 			Services.PluginInterface.SavePluginConfig(Configuration);
 			Services.PluginInterface.UiBuilder.OpenConfigUi -= ConfigGui.Toggle;
 
+			OverlayWindow.DeselectGizmo();
+
 			Interop.Hooks.ActorHooks.Dispose();
 			Interop.Hooks.ControlHooks.Dispose();
 			Interop.Hooks.EventsHooks.Dispose();
@@ -92,7 +97,6 @@ namespace Ktisis {
 			Interop.Hooks.PoseHooks.Dispose();
 
 			Interop.Alloc.Dispose();
-			Input.Instance.Dispose();
 			ActorStateWatcher.Instance.Dispose();
 			EventManager.OnGPoseChange -= Workspace.OnEnterGposeToggle;
 
@@ -100,6 +104,9 @@ namespace Ktisis {
 
 			if (EditEquip.Items != null)
 				EditEquip.Items = null;
+
+			Input.Dispose();
+			HistoryManager.Dispose();
 
 			foreach (var (_, texture) in References.Textures) {
 				texture.Dispose();
